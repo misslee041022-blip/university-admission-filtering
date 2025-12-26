@@ -4,7 +4,7 @@ import pandas as pd
 import webbrowser
 import os
 
-# [New] 3번째 라이브러리: 엑셀 서식 작성을 위한 엔진 (pip install xlsxwriter)
+# [외부 라이브러리] xlsxwriter: 엑셀 서식 및 보고서 생성을 위해 사용 (pip install xlsxwriter)
 import xlsxwriter
 
 
@@ -14,10 +14,12 @@ class UniversityFilterApp:
         self.root.title("대입 최저학력기준 자동 필터링 시스템 (Final Ver.)")
         self.root.geometry("1100x900")
 
+        # 데이터프레임 및 결과 저장 변수 초기화
         self.df = None
         self.initial_results = None
         self.final_results = None
 
+        # GUI 스타일 설정 (깔끔한 'clam' 테마 사용)
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("Treeview", rowheight=25)
@@ -25,7 +27,9 @@ class UniversityFilterApp:
         self.create_widgets()
 
     def create_widgets(self):
-        # 1. 파일 로드
+        """GUI 화면 구성을 담당하는 함수"""
+
+        # 1. 파일 로드 영역
         file_frame = ttk.LabelFrame(self.root, text="1. 데이터 로드", padding=10)
         file_frame.pack(side="top", fill="x", padx=10, pady=5)
 
@@ -36,13 +40,14 @@ class UniversityFilterApp:
         btn_load = ttk.Button(file_frame, text="엑셀 파일 열기", command=self.load_file)
         btn_load.pack(side="right")
 
-        # 2. 성적 입력
+        # 2. 성적 입력 영역
         input_frame = ttk.LabelFrame(
             self.root, text="2. 수능 성적 입력 (등급)", padding=10
         )
         input_frame.pack(side="top", fill="x", padx=10, pady=5)
 
         self.entries = {}
+        # 사용자 편의를 위해 국/수/영/한/탐구 배치 (Grid Layout 사용)
         # [1줄] 국어, 수학, 영어
         ttk.Label(input_frame, text="국어:").grid(
             row=0, column=0, padx=5, pady=5, sticky="e"
@@ -56,6 +61,7 @@ class UniversityFilterApp:
         self.entries["math"] = ttk.Entry(input_frame, width=5, justify="center")
         self.entries["math"].grid(row=0, column=3, padx=2, pady=5, sticky="w")
 
+        # 수학 선택과목 (미적/기하 vs 확통) 구분
         self.math_type = ttk.Combobox(
             input_frame, values=["미적_기하", "확통"], width=8, state="readonly"
         )
@@ -104,7 +110,7 @@ class UniversityFilterApp:
         )
         btn_run.grid(row=2, column=0, columnspan=8, pady=15, sticky="ew")
 
-        # 3. 상세 필터링
+        # 3. 상세 필터링 영역 (동적 필터링 적용)
         filter_frame = ttk.LabelFrame(
             self.root, text="3. 상세 조건 검색 (동적 필터링)", padding=10
         )
@@ -115,6 +121,7 @@ class UniversityFilterApp:
         self.var_univ = tk.StringVar(value="전체")
         self.var_type = tk.StringVar(value="전체")
 
+        # 필터 콤보박스 배치
         ttk.Label(filter_frame, text="① 최저유무:").pack(side="left", padx=5)
         self.cb_limit = ttk.Combobox(
             filter_frame,
@@ -124,7 +131,9 @@ class UniversityFilterApp:
             width=8,
         )
         self.cb_limit.pack(side="left", padx=5)
-        self.cb_limit.bind("<<ComboboxSelected>>", self.on_filter_change)
+        self.cb_limit.bind(
+            "<<ComboboxSelected>>", self.on_filter_change
+        )  # 선택 시 즉시 반영
 
         ttk.Label(filter_frame, text="② 계열:").pack(side="left", padx=5)
         self.cb_cate = ttk.Combobox(
@@ -152,7 +161,7 @@ class UniversityFilterApp:
         )
         btn_reset.pack(side="right", padx=10)
 
-        # 하단 버튼 프레임
+        # 하단 버튼 프레임 (화면 하단 고정)
         bottom_frame = ttk.Frame(self.root, padding=10)
         bottom_frame.pack(side="bottom", fill="x")
 
@@ -161,6 +170,7 @@ class UniversityFilterApp:
         )
         self.lbl_count.pack(side="left")
 
+        # 핵심 기능: 시뮬레이션 및 엑셀 저장
         btn_sim = ttk.Button(
             bottom_frame,
             text="📈 종합 등급 시뮬레이터 (멀티)",
@@ -168,7 +178,6 @@ class UniversityFilterApp:
         )
         btn_sim.pack(side="right", padx=5)
 
-        # 저장 버튼 (기능 업그레이드됨)
         btn_save = ttk.Button(
             bottom_frame,
             text="결과 저장 (Excel 리포트)",
@@ -176,7 +185,7 @@ class UniversityFilterApp:
         )
         btn_save.pack(side="right", padx=5)
 
-        # 4. 결과 출력
+        # 4. 결과 출력 영역 (Treeview)
         result_frame = ttk.LabelFrame(
             self.root, text="4. 분석 결과 (최저 충족 학과)", padding=10
         )
@@ -200,7 +209,7 @@ class UniversityFilterApp:
         for col, width in zip(columns, col_widths):
             self.tree.heading(col, text=col)
             if col == "URL":
-                self.tree.column(col, width=0, stretch=False)
+                self.tree.column(col, width=0, stretch=False)  # URL 컬럼 숨김
             else:
                 self.tree.column(col, width=width, anchor="center")
 
@@ -211,7 +220,7 @@ class UniversityFilterApp:
 
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        self.tree.bind("<Double-1>", self.on_double_click)
+        self.tree.bind("<Double-1>", self.on_double_click)  # 더블클릭 이벤트 바인딩
 
         lbl_info = ttk.Label(
             result_frame,
@@ -221,6 +230,7 @@ class UniversityFilterApp:
         lbl_info.pack(side="bottom", anchor="w")
 
     def load_file(self):
+        """엑셀 또는 CSV 파일을 불러오는 함수"""
         file_path = filedialog.askopenfilename(
             filetypes=[("Excel files", "*.xlsx *.xls")]
         )
@@ -229,11 +239,13 @@ class UniversityFilterApp:
                 try:
                     self.df = pd.read_excel(file_path)
                 except:
+                    # 엑셀 로드 실패 시 CSV로 재시도 (인코딩 처리 포함)
                     try:
                         self.df = pd.read_csv(file_path, encoding="utf-8")
                     except:
                         self.df = pd.read_csv(file_path, encoding="cp949")
-                self.df.fillna("", inplace=True)
+
+                self.df.fillna("", inplace=True)  # 결측치 처리
                 self.lbl_file_status.config(
                     text=f"로드 완료: {os.path.basename(file_path)}", foreground="green"
                 )
@@ -242,6 +254,9 @@ class UniversityFilterApp:
                 messagebox.showerror("에러", f"파일 로드 실패: {e}")
 
     def calculate_results(self, input_scores):
+        """
+        입력된 점수(input_scores)를 기반으로 최저학력기준 충족 여부를 계산하는 핵심 로직
+        """
         if self.df is None:
             return []
         results = []
@@ -250,6 +265,7 @@ class UniversityFilterApp:
         tam2_choice = self.tam2_type.get()
 
         for _, row in self.df.iterrows():
+            # 엑셀 데이터 파싱
             req_history = (
                 int(row.get("한국사", 0)) if row.get("한국사", "") != "" else 0
             )
@@ -257,13 +273,17 @@ class UniversityFilterApp:
             req_tam = str(row.get("탐구선택", "")).strip()
             req_eng = str(row.get("영어필수여부", "")).strip()
 
+            # 1. 한국사 필터링
             if req_history > 0 and input_scores["his"] > req_history:
                 continue
+
+            # 2. 수학 선택과목 필터링 (미적/기하 필수인데 확통 응시한 경우 등)
             if ("미적" in req_math or "기하" in req_math) and math_choice == "확통":
                 continue
             if "확통" in req_math and math_choice == "미적_기하":
                 continue
 
+            # 3. 탐구 선택과목 필터링 (과탐/사탐 교차지원 체크)
             my_valid_tams = []
             is_tam1_valid = True
             if "과탐" in req_tam and tam1_choice != "과탐":
@@ -287,6 +307,7 @@ class UniversityFilterApp:
             if len(my_valid_tams) < reflect_tam_count:
                 continue
 
+            # 4. 영어 필수 등급 체크
             current_eng = input_scores["eng"]
             if "등급" in req_eng:
                 import re
@@ -296,9 +317,11 @@ class UniversityFilterApp:
                     limit = int(numbers[0])
                     if input_scores["eng"] > limit:
                         continue
+                # 예외처리: 연세대는 영어를 등급합 계산에서 제외(별도 조건)하는 경우가 있음
                 if "연세대" in str(row.get("대학명", "")):
                     current_eng = 99
 
+            # 5. 등급합 계산
             limit_sum = int(row.get("등급합", 0)) if row.get("등급합", "") != "" else 0
             reflect_total_count = (
                 int(row.get("반영영역수", 0)) if row.get("반영영역수", "") != "" else 0
@@ -306,6 +329,7 @@ class UniversityFilterApp:
 
             if limit_sum > 0:
                 my_valid_tams.sort()
+                # 탐구 2과목 반영 시 평균 절사 처리 등
                 final_tam = (
                     int(sum(my_valid_tams[:2]) / 2)
                     if reflect_tam_count == 2
@@ -314,7 +338,9 @@ class UniversityFilterApp:
                 subjects = [input_scores["kor"], input_scores["math"], final_tam]
                 if current_eng != 99:
                     subjects.append(current_eng)
-                subjects.sort()
+                subjects.sort()  # 잘한 과목 순으로 정렬
+
+                # 상위 N개 과목의 합이 기준보다 크면(못하면) 탈락
                 if sum(subjects[:reflect_total_count]) > limit_sum:
                     continue
 
@@ -322,6 +348,7 @@ class UniversityFilterApp:
         return results
 
     def run_primary_filter(self):
+        """1차 필터링 실행 버튼 핸들러"""
         try:
             scores = {}
             for key, ent in self.entries.items():
@@ -339,11 +366,13 @@ class UniversityFilterApp:
             messagebox.showwarning("경고", "데이터 로드 필요")
             return
 
+        # 계산 실행
         self.initial_results = pd.DataFrame(self.calculate_results(scores))
         self.update_filter_options()
         self.reset_detail_filter()
 
     def update_filter_options(self):
+        """필터링 결과에 따라 콤보박스 선택지 업데이트"""
         if self.initial_results is None or self.initial_results.empty:
             return
         univs = sorted(self.initial_results["대학명"].unique().tolist())
@@ -354,15 +383,18 @@ class UniversityFilterApp:
         self.cb_type["values"] = ["전체"] + types
 
     def on_filter_change(self, event=None):
+        """상세 필터 변경 시 Treeview 업데이트"""
         if self.initial_results is None:
             return
         df = self.initial_results.copy()
 
+        # 최저 유무 필터
         if self.var_limit.get() == "최저있음":
             df = df[df["등급합"].apply(lambda x: x != "" and int(x) > 0)]
         elif self.var_limit.get() == "최저없음":
             df = df[df["등급합"].apply(lambda x: x == "" or int(x) == 0)]
 
+        # 동적 필터링 (Cascading)
         self.cb_cate["values"] = ["전체"] + sorted(df["계열"].unique().tolist())
         if self.var_cate.get() != "전체":
             df = df[df["계열"] == self.var_cate.get()]
@@ -387,6 +419,7 @@ class UniversityFilterApp:
         self.on_filter_change()
 
     def update_treeview(self):
+        """Treeview 데이터 갱신"""
         for i in self.tree.get_children():
             self.tree.delete(i)
         if self.final_results is not None:
@@ -412,28 +445,30 @@ class UniversityFilterApp:
                 )
 
     def on_double_click(self, event):
+        """더블 클릭 시 URL 이동"""
         item = self.tree.selection()[0]
         url = self.tree.item(item, "values")[-1]
         if url and str(url).startswith("http"):
             webbrowser.open(url)
 
-    # [수정됨] 간결한 메시지
     def save_excel_report(self):
-        if self.final_results is None or self.final_results.empty:
-            messagebox.showwarning("경고", "저장할 결과가 없습니다.")
+        """XlsxWriter를 이용한 보고서 저장"""
+        if self.final_results is None:
             return
-
-        file_path = filedialog.asksaveasfilename(
+        path = filedialog.asksaveasfilename(
             defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")]
         )
-        if not file_path:
+        if not path:
             return
 
         try:
-            with pd.ExcelWriter(file_path, engine="xlsxwriter") as writer:
+            # Pandas와 XlsxWriter 연동
+            with pd.ExcelWriter(path, engine="xlsxwriter") as writer:
                 self.final_results.to_excel(writer, index=False, sheet_name="분석결과")
                 workbook = writer.book
                 worksheet = writer.sheets["분석결과"]
+
+                # 헤더 스타일 정의
                 header_fmt = workbook.add_format(
                     {
                         "bold": True,
@@ -443,6 +478,8 @@ class UniversityFilterApp:
                         "border": 1,
                     }
                 )
+
+                # 헤더 적용 및 컬럼 너비 자동 조절
                 for col_num, value in enumerate(self.final_results.columns.values):
                     worksheet.write(0, col_num, value, header_fmt)
                 for i, col in enumerate(self.final_results.columns):
@@ -454,15 +491,15 @@ class UniversityFilterApp:
                     )
                     worksheet.set_column(i, i, max_len)
 
-            # 메시지 변경
             messagebox.showinfo("성공", "파일이 생성되었습니다.")
 
         except Exception as e:
             messagebox.showerror("에러", f"저장 실패: {e}")
 
-    # ================= 시뮬레이션 =================
+    # ================= 시뮬레이션 기능 =================
 
     def open_simulation_dialog(self):
+        """종합 등급 시뮬레이터 팝업창 오픈"""
         if self.initial_results is None:
             messagebox.showwarning(
                 "알림", "먼저 현재 점수로 분석(1차 필터링)을 실행해주세요."
@@ -503,6 +540,7 @@ class UniversityFilterApp:
                 justify="center",
             )
             cb.grid(row=i, column=1, padx=10, pady=8, sticky="w")
+            # 현재 입력된 값을 기본값으로 세팅
             try:
                 val = self.entries[key].get()
                 if val:
@@ -521,6 +559,8 @@ class UniversityFilterApp:
 
                 sim_res = pd.DataFrame(self.calculate_results(new_scores))
 
+                # Delta Analysis (변동분 분석)
+                # 고유 Key 생성
                 self.initial_results["ID"] = (
                     self.initial_results["대학명"]
                     + self.initial_results["모집단위"]
@@ -536,8 +576,8 @@ class UniversityFilterApp:
                 else:
                     sim_ids = set()
 
-                added_ids = sim_ids - orig_ids
-                removed_ids = orig_ids - sim_ids
+                added_ids = sim_ids - orig_ids  # 추가된 학과 (합격권 진입)
+                removed_ids = orig_ids - sim_ids  # 제외된 학과 (불합격 전환)
 
                 if len(added_ids) == 0 and len(removed_ids) == 0:
                     messagebox.showinfo("결과", "변동 사항이 없습니다.")
@@ -559,6 +599,7 @@ class UniversityFilterApp:
         )
 
     def show_complex_sim_result(self, added_df, removed_df):
+        """시뮬레이션 결과를 탭(Tab) 형태로 보여주는 창"""
         win = tk.Toplevel(self.root)
         win.title("📊 시뮬레이션 비교 분석 리포트")
         win.geometry("1100x850")
@@ -578,6 +619,7 @@ class UniversityFilterApp:
                 )
                 return
 
+            # 결과 내 재검색 필터
             f_frame = ttk.LabelFrame(parent, text="결과 내 필터링", padding=5)
             f_frame.pack(fill="x", padx=10, pady=5)
 
