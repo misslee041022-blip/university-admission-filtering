@@ -3,14 +3,16 @@ from tkinter import ttk, filedialog, messagebox
 import pandas as pd
 import webbrowser
 import os
-from datetime import datetime
+
+# [New] 3번째 라이브러리: 엑셀 서식 작성을 위한 엔진 (pip install xlsxwriter)
+import xlsxwriter
 
 
 class UniversityFilterApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("대입 최저학력기준 자동 필터링 시스템 (V8 - 엑셀 전용)")
-        self.root.geometry("1100x800")
+        self.root.title("대입 최저학력기준 자동 필터링 시스템 (Final Ver.)")
+        self.root.geometry("1100x900")
 
         self.df = None
         self.initial_results = None
@@ -25,22 +27,22 @@ class UniversityFilterApp:
     def create_widgets(self):
         # 1. 파일 로드
         file_frame = ttk.LabelFrame(self.root, text="1. 데이터 로드", padding=10)
-        file_frame.pack(fill="x", padx=10, pady=5)
+        file_frame.pack(side="top", fill="x", padx=10, pady=5)
 
         self.lbl_file_status = ttk.Label(
             file_frame, text="엑셀 파일(.xlsx)을 불러와주세요.", foreground="red"
         )
         self.lbl_file_status.pack(side="left", padx=5)
-
         btn_load = ttk.Button(file_frame, text="엑셀 파일 열기", command=self.load_file)
         btn_load.pack(side="right")
 
         # 2. 성적 입력
-        input_frame = ttk.LabelFrame(self.root, text="2. 내 성적 입력", padding=10)
-        input_frame.pack(fill="x", padx=10, pady=5)
+        input_frame = ttk.LabelFrame(
+            self.root, text="2. 수능 성적 입력 (등급)", padding=10
+        )
+        input_frame.pack(side="top", fill="x", padx=10, pady=5)
 
         self.entries = {}
-
         # [1줄] 국어, 수학, 영어
         ttk.Label(input_frame, text="국어:").grid(
             row=0, column=0, padx=5, pady=5, sticky="e"
@@ -97,7 +99,7 @@ class UniversityFilterApp:
 
         btn_run = ttk.Button(
             input_frame,
-            text="1차 필터링 (최저 기준 분석) 🚀",
+            text="최저 충족 여부 분석 시작 🚀",
             command=self.run_primary_filter,
         )
         btn_run.grid(row=2, column=0, columnspan=8, pady=15, sticky="ew")
@@ -106,7 +108,7 @@ class UniversityFilterApp:
         filter_frame = ttk.LabelFrame(
             self.root, text="3. 상세 조건 검색 (동적 필터링)", padding=10
         )
-        filter_frame.pack(fill="x", padx=10, pady=5)
+        filter_frame.pack(side="top", fill="x", padx=10, pady=5)
 
         self.var_limit = tk.StringVar(value="전체")
         self.var_cate = tk.StringVar(value="전체")
@@ -150,9 +152,35 @@ class UniversityFilterApp:
         )
         btn_reset.pack(side="right", padx=10)
 
+        # 하단 버튼 프레임
+        bottom_frame = ttk.Frame(self.root, padding=10)
+        bottom_frame.pack(side="bottom", fill="x")
+
+        self.lbl_count = ttk.Label(
+            bottom_frame, text="총 0개 학과 검색됨", font=("bold", 12)
+        )
+        self.lbl_count.pack(side="left")
+
+        btn_sim = ttk.Button(
+            bottom_frame,
+            text="📈 종합 등급 시뮬레이터 (멀티)",
+            command=self.open_simulation_dialog,
+        )
+        btn_sim.pack(side="right", padx=5)
+
+        # 저장 버튼 (기능 업그레이드됨)
+        btn_save = ttk.Button(
+            bottom_frame,
+            text="결과 저장 (Excel 리포트)",
+            command=self.save_excel_report,
+        )
+        btn_save.pack(side="right", padx=5)
+
         # 4. 결과 출력
-        result_frame = ttk.LabelFrame(self.root, text="4. 최종 결과", padding=10)
-        result_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        result_frame = ttk.LabelFrame(
+            self.root, text="4. 분석 결과 (최저 충족 학과)", padding=10
+        )
+        result_frame.pack(side="top", fill="both", expand=True, padx=10, pady=5)
 
         columns = [
             "대학명",
@@ -192,35 +220,19 @@ class UniversityFilterApp:
         )
         lbl_info.pack(side="bottom", anchor="w")
 
-        # 5. 저장 버튼
-        save_frame = ttk.Frame(self.root, padding=10)
-        save_frame.pack(fill="x")
-        self.lbl_count = ttk.Label(
-            save_frame, text="총 0개 학과 검색됨", font=("bold", 12)
-        )
-        self.lbl_count.pack(side="left")
-        btn_save = ttk.Button(
-            save_frame, text="결과 저장 (CSV)", command=self.save_file
-        )
-        btn_save.pack(side="right")
-
     def load_file(self):
-        # [수정] 엑셀 파일만 선택 가능하도록 변경
         file_path = filedialog.askopenfilename(
             filetypes=[("Excel files", "*.xlsx *.xls")]
         )
         if file_path:
             try:
-                # 1. 엑셀로 먼저 시도
                 try:
                     self.df = pd.read_excel(file_path)
                 except:
-                    # 2. 실패 시 CSV로 시도 (확장자만 xlsx인 경우 대비)
                     try:
                         self.df = pd.read_csv(file_path, encoding="utf-8")
                     except:
                         self.df = pd.read_csv(file_path, encoding="cp949")
-
                 self.df.fillna("", inplace=True)
                 self.lbl_file_status.config(
                     text=f"로드 완료: {os.path.basename(file_path)}", foreground="green"
@@ -229,30 +241,14 @@ class UniversityFilterApp:
             except Exception as e:
                 messagebox.showerror("에러", f"파일 로드 실패: {e}")
 
-    def run_primary_filter(self):
-        try:
-            scores = {}
-            for key, ent in self.entries.items():
-                val = ent.get()
-                if not val:
-                    raise ValueError("모든 등급을 입력해주세요.")
-                scores[key] = float(val)
-                if not (1 <= scores[key] <= 9):
-                    raise ValueError("등급은 1~9 사이여야 합니다.")
-
-            math_choice = self.math_type.get()
-            tam1_choice = self.tam1_type.get()
-            tam2_choice = self.tam2_type.get()
-
-        except ValueError as e:
-            messagebox.showwarning("입력 오류", str(e))
-            return
-
+    def calculate_results(self, input_scores):
         if self.df is None:
-            messagebox.showwarning("경고", "데이터 파일을 먼저 불러와주세요.")
-            return
-
+            return []
         results = []
+        math_choice = self.math_type.get()
+        tam1_choice = self.tam1_type.get()
+        tam2_choice = self.tam2_type.get()
+
         for _, row in self.df.iterrows():
             req_history = (
                 int(row.get("한국사", 0)) if row.get("한국사", "") != "" else 0
@@ -261,9 +257,8 @@ class UniversityFilterApp:
             req_tam = str(row.get("탐구선택", "")).strip()
             req_eng = str(row.get("영어필수여부", "")).strip()
 
-            if req_history > 0 and scores["his"] > req_history:
+            if req_history > 0 and input_scores["his"] > req_history:
                 continue
-
             if ("미적" in req_math or "기하" in req_math) and math_choice == "확통":
                 continue
             if "확통" in req_math and math_choice == "미적_기하":
@@ -276,7 +271,7 @@ class UniversityFilterApp:
             if "사탐" in req_tam and tam1_choice != "사탐":
                 is_tam1_valid = False
             if is_tam1_valid:
-                my_valid_tams.append(scores["tam1"])
+                my_valid_tams.append(input_scores["tam1"])
 
             is_tam2_valid = True
             if "과탐" in req_tam and tam2_choice != "과탐":
@@ -284,7 +279,7 @@ class UniversityFilterApp:
             if "사탐" in req_tam and tam2_choice != "사탐":
                 is_tam2_valid = False
             if is_tam2_valid:
-                my_valid_tams.append(scores["tam2"])
+                my_valid_tams.append(input_scores["tam2"])
 
             reflect_tam_count = (
                 int(row.get("탐구반영수", 1)) if row.get("탐구반영수", "") != "" else 1
@@ -292,14 +287,14 @@ class UniversityFilterApp:
             if len(my_valid_tams) < reflect_tam_count:
                 continue
 
-            current_eng = scores["eng"]
+            current_eng = input_scores["eng"]
             if "등급" in req_eng:
                 import re
 
                 numbers = re.findall(r"\d+", req_eng)
                 if numbers:
                     limit = int(numbers[0])
-                    if scores["eng"] > limit:
+                    if input_scores["eng"] > limit:
                         continue
                 if "연세대" in str(row.get("대학명", "")):
                     current_eng = 99
@@ -311,21 +306,40 @@ class UniversityFilterApp:
 
             if limit_sum > 0:
                 my_valid_tams.sort()
-                if reflect_tam_count == 2:
-                    final_tam_score = int(sum(my_valid_tams[:2]) / 2)
-                else:
-                    final_tam_score = my_valid_tams[0]
-                subjects = [scores["kor"], scores["math"], final_tam_score]
+                final_tam = (
+                    int(sum(my_valid_tams[:2]) / 2)
+                    if reflect_tam_count == 2
+                    else my_valid_tams[0]
+                )
+                subjects = [input_scores["kor"], input_scores["math"], final_tam]
                 if current_eng != 99:
                     subjects.append(current_eng)
                 subjects.sort()
-                my_sum = sum(subjects[:reflect_total_count])
-                if my_sum > limit_sum:
+                if sum(subjects[:reflect_total_count]) > limit_sum:
                     continue
 
             results.append(row)
+        return results
 
-        self.initial_results = pd.DataFrame(results)
+    def run_primary_filter(self):
+        try:
+            scores = {}
+            for key, ent in self.entries.items():
+                val = ent.get()
+                if not val:
+                    raise ValueError("성적 입력")
+                scores[key] = float(val)
+                if not (1 <= scores[key] <= 9):
+                    raise ValueError("1~9 등급 입력")
+        except:
+            messagebox.showwarning("오류", "성적을 올바르게 입력해주세요.")
+            return
+
+        if self.df is None:
+            messagebox.showwarning("경고", "데이터 로드 필요")
+            return
+
+        self.initial_results = pd.DataFrame(self.calculate_results(scores))
         self.update_filter_options()
         self.reset_detail_filter()
 
@@ -342,44 +356,28 @@ class UniversityFilterApp:
     def on_filter_change(self, event=None):
         if self.initial_results is None:
             return
-        df_pool = self.initial_results.copy()
+        df = self.initial_results.copy()
 
-        limit_val = self.var_limit.get()
-        if limit_val == "최저있음":
-            df_pool = df_pool[df_pool["등급합"].apply(lambda x: x != "" and int(x) > 0)]
-        elif limit_val == "최저없음":
-            df_pool = df_pool[df_pool["등급합"].apply(lambda x: x == "" or int(x) == 0)]
+        if self.var_limit.get() == "최저있음":
+            df = df[df["등급합"].apply(lambda x: x != "" and int(x) > 0)]
+        elif self.var_limit.get() == "최저없음":
+            df = df[df["등급합"].apply(lambda x: x == "" or int(x) == 0)]
 
-        valid_cates = sorted(df_pool["계열"].unique().tolist())
-        self.cb_cate["values"] = ["전체"] + valid_cates
-        if self.var_cate.get() not in ["전체"] + valid_cates:
-            self.var_cate.set("전체")
+        self.cb_cate["values"] = ["전체"] + sorted(df["계열"].unique().tolist())
+        if self.var_cate.get() != "전체":
+            df = df[df["계열"] == self.var_cate.get()]
 
-        cate_val = self.var_cate.get()
-        if cate_val != "전체":
-            df_pool = df_pool[df_pool["계열"] == cate_val]
+        self.cb_univ["values"] = ["전체"] + sorted(df["대학명"].unique().tolist())
+        if self.var_univ.get() != "전체":
+            df = df[df["대학명"] == self.var_univ.get()]
 
-        valid_univs = sorted(df_pool["대학명"].unique().tolist())
-        self.cb_univ["values"] = ["전체"] + valid_univs
-        if self.var_univ.get() not in ["전체"] + valid_univs:
-            self.var_univ.set("전체")
+        self.cb_type["values"] = ["전체"] + sorted(df["전형명"].unique().tolist())
+        if self.var_type.get() != "전체":
+            df = df[df["전형명"] == self.var_type.get()]
 
-        univ_val = self.var_univ.get()
-        if univ_val != "전체":
-            df_pool = df_pool[df_pool["대학명"] == univ_val]
-
-        valid_types = sorted(df_pool["전형명"].unique().tolist())
-        self.cb_type["values"] = ["전체"] + valid_types
-        if self.var_type.get() not in ["전체"] + valid_types:
-            self.var_type.set("전체")
-
-        type_val = self.var_type.get()
-        if type_val != "전체":
-            df_pool = df_pool[df_pool["전형명"] == type_val]
-
-        self.final_results = df_pool
+        self.final_results = df
         self.update_treeview()
-        self.lbl_count.config(text=f"🔍 조건에 맞는 학과: {len(df_pool)}개")
+        self.lbl_count.config(text=f"🔍 충족된 학과: {len(df)}개")
 
     def reset_detail_filter(self):
         self.var_limit.set("전체")
@@ -393,10 +391,11 @@ class UniversityFilterApp:
             self.tree.delete(i)
         if self.final_results is not None:
             for _, row in self.final_results.iterrows():
-                limit_text = "-"
-                if row.get("등급합", "") != "" and int(row.get("등급합", 0)) > 0:
-                    limit_text = f"{row['반영영역수']}합 {row['등급합']}"
-                type_name = row.get("전형명", "기타")
+                limit_text = (
+                    f"{row['반영영역수']}합 {row['등급합']}"
+                    if row.get("등급합", "") != "" and int(row.get("등급합", 0)) > 0
+                    else "-"
+                )
                 self.tree.insert(
                     "",
                     "end",
@@ -404,7 +403,7 @@ class UniversityFilterApp:
                         row.get("대학명", ""),
                         row.get("계열", ""),
                         row.get("모집단위", ""),
-                        type_name,
+                        row.get("전형명", ""),
                         limit_text,
                         row.get("50컷", "-"),
                         row.get("70컷", "-"),
@@ -417,22 +416,264 @@ class UniversityFilterApp:
         url = self.tree.item(item, "values")[-1]
         if url and str(url).startswith("http"):
             webbrowser.open(url)
-        else:
-            messagebox.showinfo("알림", "홈페이지 링크가 없습니다.")
 
-    def save_file(self):
+    # [수정됨] 간결한 메시지
+    def save_excel_report(self):
         if self.final_results is None or self.final_results.empty:
             messagebox.showwarning("경고", "저장할 결과가 없습니다.")
             return
+
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv", filetypes=[("CSV file", "*.csv")]
+            defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")]
         )
-        if file_path:
+        if not file_path:
+            return
+
+        try:
+            with pd.ExcelWriter(file_path, engine="xlsxwriter") as writer:
+                self.final_results.to_excel(writer, index=False, sheet_name="분석결과")
+                workbook = writer.book
+                worksheet = writer.sheets["분석결과"]
+                header_fmt = workbook.add_format(
+                    {
+                        "bold": True,
+                        "text_wrap": True,
+                        "valign": "top",
+                        "fg_color": "#D7E4BC",
+                        "border": 1,
+                    }
+                )
+                for col_num, value in enumerate(self.final_results.columns.values):
+                    worksheet.write(0, col_num, value, header_fmt)
+                for i, col in enumerate(self.final_results.columns):
+                    max_len = (
+                        max(
+                            self.final_results[col].astype(str).map(len).max(), len(col)
+                        )
+                        + 2
+                    )
+                    worksheet.set_column(i, i, max_len)
+
+            # 메시지 변경
+            messagebox.showinfo("성공", "파일이 생성되었습니다.")
+
+        except Exception as e:
+            messagebox.showerror("에러", f"저장 실패: {e}")
+
+    # ================= 시뮬레이션 =================
+
+    def open_simulation_dialog(self):
+        if self.initial_results is None:
+            messagebox.showwarning(
+                "알림", "먼저 현재 점수로 분석(1차 필터링)을 실행해주세요."
+            )
+            return
+
+        diag = tk.Toplevel(self.root)
+        diag.title("🎓 종합 성적 시뮬레이터 (가상 성적표)")
+        diag.geometry("400x500")
+
+        ttk.Label(diag, text="가정할 수능 등급을 설정하세요.", font=("bold", 12)).pack(
+            pady=20
+        )
+
+        sim_entries = {}
+        grid_frame = ttk.Frame(diag)
+        grid_frame.pack(padx=20, pady=10)
+
+        subjects = [
+            ("국어", "kor"),
+            ("수학", "math"),
+            ("영어", "eng"),
+            ("한국사", "his"),
+            ("탐구1", "tam1"),
+            ("탐구2", "tam2"),
+        ]
+        grade_list = [str(i) for i in range(1, 10)]
+
+        for i, (label_text, key) in enumerate(subjects):
+            ttk.Label(grid_frame, text=label_text, font=("", 10)).grid(
+                row=i, column=0, padx=10, pady=8, sticky="e"
+            )
+            cb = ttk.Combobox(
+                grid_frame,
+                values=grade_list,
+                width=5,
+                state="readonly",
+                justify="center",
+            )
+            cb.grid(row=i, column=1, padx=10, pady=8, sticky="w")
             try:
-                self.final_results.to_csv(file_path, index=False, encoding="utf-8-sig")
-                messagebox.showinfo("완료", "파일 저장 완료!")
+                val = self.entries[key].get()
+                if val:
+                    cb.set(str(int(float(val))))
+                else:
+                    cb.current(0)
+            except:
+                cb.current(0)
+            sim_entries[key] = cb
+
+        def run_full_sim():
+            try:
+                new_scores = {}
+                for key, cb in sim_entries.items():
+                    new_scores[key] = float(cb.get())
+
+                sim_res = pd.DataFrame(self.calculate_results(new_scores))
+
+                self.initial_results["ID"] = (
+                    self.initial_results["대학명"]
+                    + self.initial_results["모집단위"]
+                    + self.initial_results["전형명"]
+                )
+                orig_ids = set(self.initial_results["ID"])
+
+                if not sim_res.empty:
+                    sim_res["ID"] = (
+                        sim_res["대학명"] + sim_res["모집단위"] + sim_res["전형명"]
+                    )
+                    sim_ids = set(sim_res["ID"])
+                else:
+                    sim_ids = set()
+
+                added_ids = sim_ids - orig_ids
+                removed_ids = orig_ids - sim_ids
+
+                if len(added_ids) == 0 and len(removed_ids) == 0:
+                    messagebox.showinfo("결과", "변동 사항이 없습니다.")
+                    return
+
+                added_df = sim_res[sim_res["ID"].isin(added_ids)]
+                removed_df = self.initial_results[
+                    self.initial_results["ID"].isin(removed_ids)
+                ]
+
+                self.show_complex_sim_result(added_df, removed_df)
+                diag.destroy()
+
             except Exception as e:
-                messagebox.showerror("에러", f"저장 실패: {e}")
+                messagebox.showerror("에러", f"오류 발생: {e}")
+
+        ttk.Button(diag, text="시뮬레이션 분석 시작 ▶", command=run_full_sim).pack(
+            pady=20
+        )
+
+    def show_complex_sim_result(self, added_df, removed_df):
+        win = tk.Toplevel(self.root)
+        win.title("📊 시뮬레이션 비교 분석 리포트")
+        win.geometry("1100x850")
+
+        tab_control = ttk.Notebook(win)
+        tab1 = ttk.Frame(tab_control)
+        tab2 = ttk.Frame(tab_control)
+
+        tab_control.add(tab1, text=f"🎉 추가 지원 가능 (+{len(added_df)}개)")
+        tab_control.add(tab2, text=f"🚨 지원 불가능 전환 (-{len(removed_df)}개)")
+        tab_control.pack(expand=1, fill="both")
+
+        def create_tab_content(parent, dataframe):
+            if dataframe.empty:
+                ttk.Label(parent, text="해당하는 학과가 없습니다.", font=("", 15)).pack(
+                    pady=50
+                )
+                return
+
+            f_frame = ttk.LabelFrame(parent, text="결과 내 필터링", padding=5)
+            f_frame.pack(fill="x", padx=10, pady=5)
+
+            v_univ = tk.StringVar(value="전체")
+            v_cate = tk.StringVar(value="전체")
+            v_type = tk.StringVar(value="전체")
+
+            ttk.Label(f_frame, text="계열:").pack(side="left", padx=5)
+            cb_cate = ttk.Combobox(
+                f_frame, textvariable=v_cate, state="readonly", width=10
+            )
+            cb_cate.pack(side="left")
+            ttk.Label(f_frame, text="학교:").pack(side="left", padx=5)
+            cb_univ = ttk.Combobox(
+                f_frame, textvariable=v_univ, state="readonly", width=12
+            )
+            cb_univ.pack(side="left")
+            ttk.Label(f_frame, text="전형:").pack(side="left", padx=5)
+            cb_type = ttk.Combobox(
+                f_frame, textvariable=v_type, state="readonly", width=12
+            )
+            cb_type.pack(side="left")
+
+            tree = ttk.Treeview(
+                parent,
+                columns=["대학", "계열", "학과", "전형", "최저", "50컷", "70컷", "URL"],
+                show="headings",
+            )
+            cols = ["대학", "계열", "학과", "전형", "최저", "50컷", "70컷", "URL"]
+            widt = [80, 50, 150, 100, 100, 60, 60, 0]
+            for c, w in zip(cols, widt):
+                tree.heading(c, text=c)
+                if c == "URL":
+                    tree.column(c, width=0, stretch=False)
+                else:
+                    tree.column(c, width=w, anchor="center")
+
+            scr = ttk.Scrollbar(parent, orient="vertical", command=tree.yview)
+            tree.configure(yscroll=scr.set)
+            tree.pack(side="left", fill="both", expand=True, padx=10, pady=5)
+            scr.pack(side="right", fill="y", pady=5)
+
+            def on_dbl_click(event):
+                item = tree.selection()[0]
+                u = tree.item(item, "values")[-1]
+                if u.startswith("http"):
+                    webbrowser.open(u)
+
+            tree.bind("<Double-1>", on_dbl_click)
+
+            def update_list(event=None):
+                temp = dataframe.copy()
+                if v_cate.get() != "전체":
+                    temp = temp[temp["계열"] == v_cate.get()]
+                if v_univ.get() != "전체":
+                    temp = temp[temp["대학명"] == v_univ.get()]
+                if v_type.get() != "전체":
+                    temp = temp[temp["전형명"] == v_type.get()]
+
+                for i in tree.get_children():
+                    tree.delete(i)
+                for _, r in temp.iterrows():
+                    l_txt = (
+                        f"{r['반영영역수']}합 {r['등급합']}"
+                        if r.get("등급합", "") != "" and int(r.get("등급합", 0)) > 0
+                        else "-"
+                    )
+                    tree.insert(
+                        "",
+                        "end",
+                        values=(
+                            r["대학명"],
+                            r["계열"],
+                            r["모집단위"],
+                            r["전형명"],
+                            l_txt,
+                            r["50컷"],
+                            r["70컷"],
+                            r["URL"],
+                        ),
+                    )
+
+                cb_cate["values"] = ["전체"] + sorted(
+                    dataframe["계열"].unique().tolist()
+                )
+                cb_univ["values"] = ["전체"] + sorted(temp["대학명"].unique().tolist())
+                cb_type["values"] = ["전체"] + sorted(temp["전형명"].unique().tolist())
+
+            cb_cate.bind("<<ComboboxSelected>>", update_list)
+            cb_univ.bind("<<ComboboxSelected>>", update_list)
+            cb_type.bind("<<ComboboxSelected>>", update_list)
+
+            update_list()
+
+        create_tab_content(tab1, added_df)
+        create_tab_content(tab2, removed_df)
 
 
 if __name__ == "__main__":
