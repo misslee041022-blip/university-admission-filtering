@@ -1,37 +1,35 @@
-# 🎓 University Admission Filtering & Simulation System
-(대입 수능 최저학력기준 분석 및 등급 시뮬레이터)
+# 대입 수능 최저학력기준 분석 및 등급 시뮬레이션 프로그램
 
-## 📌 Project Overview
-This project is a Python-based application that filters university departments based on CSAT (Suneung) scores.
-It goes beyond simple filtering by providing a **"What-if Simulation"** feature to analyze potential admission chances based on grade changes and generates **formatted Excel reports**.
+## 1. 프로젝트 소개
+이 프로젝트는 사용자의 수능 등급 데이터를 기반으로 지원 가능한 대학 및 학과를 자동으로 필터링해주는 파이썬 애플리케이션입니다.
+단순한 최저 기준 충족 여부 확인을 넘어, 특정 과목의 등급이 변동되었을 때의 합격 가능성을 예측하는 '등급 시뮬레이션' 기능을 제공합니다.
 
-## ✨ Key Features (주요 기능)
-1.  **Data Loading**: Supports `.xlsx` and `.csv` files containing university admission data.
-2.  **Basic Filtering**: Filters departments based on user's current CSAT grades (Korean, Math, English, History, Exploration).
-3.  **Detailed Filtering**: Filter results dynamically by Category (Humanities/Natural), University, and Admission Type.
-4.  **📈 Grade Simulation (What-if Analysis)**:
-    * Simulates scenarios where grades improve or decline (e.g., English +1 grade).
-    * Provides a **Comparative Analysis (Delta)**: Shows newly added departments vs. removed departments.
-    * Visualizes results using Tabs (Added/Removed).
-5.  **📊 Excel Reporting**: Exports analysis results into a clean, formatted Excel file using the `xlsxwriter` engine.
+## 2. 주요 기능
+* **데이터 로드:** 입시 데이터가 담긴 엑셀(.xlsx) 및 CSV 파일을 불러옵니다.
+* **기본 필터링:** 국어, 수학, 영어, 한국사, 탐구 영역 등급을 입력하여 최저학력기준 충족 학과를 1차적으로 선별합니다.
+* **상세 조건 검색:** 분석된 결과 내에서 계열(인문/자연), 대학명, 전형유형별로 실시간 재검색이 가능합니다.
+* **양방향 등급 시뮬레이션 (What-if 분석):**
+    - 특정 과목의 등급이 상승하거나 하락했을 때를 가정하여 시뮬레이션을 수행합니다.
+    - 성적 변동으로 인해 '새롭게 지원 가능해진 학과'와 '지원 불가능하게 된 학과'를 탭(Tab)으로 구분하여 비교 분석합니다.
+* **엑셀 리포트 저장:** XlsxWriter 엔진을 활용하여, 가독성 높은 서식이 적용된 엑셀 보고서 형태로 결과를 저장합니다.
 
-## 🛠️ Tech Stack & Modules
-* **Python 3.9+**
-* **Pandas**: Data processing and filtering engine.
-* **Openpyxl**: Engine for reading Excel database files.
-* **XlsxWriter**: Engine for generating formatted Excel reports.
-* **Tkinter**: GUI (Graphical User Interface) implementation.
+## 3. 사용 라이브러리 및 모듈
+데이터 분석 및 결과 리포팅을 위해 아래의 3가지 핵심 외부 라이브러리를 사용했습니다.
+* **Pandas:** 대용량 입시 데이터 처리 및 조건 필터링 수행
+* **Openpyxl:** 엑셀 데이터베이스 파일 읽기 지원
+* **XlsxWriter:** 결과 데이터를 서식이 적용된 엑셀 파일로 저장
 
-## 🚀 How to Run
-1.  Install dependencies:
-    ```bash
-    pip install pandas openpyxl xlsxwriter
-    ```
-2.  Run the application:
-    ```bash
-    python main.py
-    ```
-3.  Load your data file (`data.xlsx`) and input your scores.
+(GUI 구현은 파이썬 표준 라이브러리인 Tkinter를 사용했습니다.)
 
-## 👨‍💻 Developer Note
-This program was developed to help students establish strategic admission plans by visualizing data-driven possibilities.
+## 4. 실행 방법
+1. 필요한 라이브러리를 설치합니다.
+   pip install pandas openpyxl xlsxwriter
+
+2. 프로그램을 실행합니다.
+   python main.py
+
+3. 데이터 파일을 불러온 후 성적을 입력하여 분석을 시작합니다.
+
+## 5. 참고 사항
+* 시뮬레이션 결과 창에는 많은 정보가 포함되어 있습니다. 원활한 확인을 위해 **프로그램 창을 최대화(전체 화면)하거나 크게 늘려서 사용**하는 것을 권장합니다.
+* 본 프로그램의 결과는 수능 최저학력기준 충족 여부만을 판단하며, 실제 합격 여부는 교과 성적 및 기타 요소에 따라 달라질 수 있습니다.
